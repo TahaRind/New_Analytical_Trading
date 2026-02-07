@@ -51,23 +51,32 @@ with col1:
 
 with col2:
     if st.button("Create New Analysis"):
+        st.session_state.show_create_form = True
+
+    if st.session_state.get("show_create_form"):
         if analysis_name:
             # Placeholder for initial indicators, will be configured later
             initial_indicators = {'ema': ['5', '10'], 'rsi': ['14']}
-            stock_names = st.text_input("Enter Stock Tickers (comma-separated, e.g., 'UAL,AAPL,MSFT')", key="stock_name_input_create")
-            
-            if st.button("Add stock"):
+            with st.form("create_analysis_form"):
+                stock_names = st.text_input(
+                    "Enter Stock Tickers (comma-separated, e.g., 'UAL,AAPL,MSFT')",
+                    key="stock_name_input_create"
+                )
+                submitted = st.form_submit_button("Add stock")
+
+            if submitted:
                 if stock_names:
                     try:
                         # Call the new create_analysis from SA_orchestrator
                         st.session_state.stock_analyser_obj = create_analysis(stock_names.upper(), initial_indicators, False)
                         st.success(f"New analysis '{analysis_name}' created successfully for {stock_names.upper()}.")
+                        st.session_state.show_create_form = False
                     except Exception as e:
                         st.error(f"Error creating analysis: {e}")
                 else:
                     st.warning("Please enter at least one stock ticker to create a new analysis.")
-            else:
-                st.warning("Please enter a name for the new analysis.")
+        else:
+            st.warning("Please enter a name for the new analysis.")
 
             
 
