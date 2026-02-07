@@ -14,22 +14,7 @@ def masker(start,end,df):
 class Strategiser():
   def __init__(self, name, indicator_strategies ,max_positions = 1,stop_loss = -1):
     self.name = name + '_strat'
-    indicator_strategies_dict = {}
-    for name in indicator_strategies:
-      key,value = name.split("_")
-
-      if key =='EMA':
-          indicator_strategies_dict[name] = ['cross',name,'Adj Close']
-
-      elif key =='RSI':
-          
-          indicator_strategies_dict[name] = ['range',name,'Adj Close']
-
-          strat = Strategiser(name,{'range':[name,30,70]})
-          
-      #ual.run_strat(strat)
-    
-    self.indicator_strategies_dict = indicator_strategies_dict
+    self.indicator_strategies_dict = indicator_strategies
     self.max_positions = max_positions
     self.stop_loss = stop_loss
     self.dataframe = None
@@ -64,6 +49,7 @@ class StockAnalyser():
 
       self.dataframe = yf.download(self.name, period='max')
       self.dataframe['Day Change'] = self.dataframe['Adj Close'] - self.dataframe['Adj Close'].shift(1)    
+      self.initial_dataframe = self.dataframe.copy()
       self.outliers_dict = {}
       self.signals_dict = {}
       self.strategies_dict = {}
@@ -153,21 +139,25 @@ class StockAnalyser():
       """
       combined_signals = []
       
-      for key,value in strat.indicator_strategies_dict.items(): # access each indicator
-        if value[0] in self.signals_dict: #if indicator signal is already in signals_dict
-          pass
-        else:
-          if key =='cross': #if cross indicator i.e. EMA cross
-            var1,var2 = self.cross_over(value[1],value[0])
-          elif key == 'range': #if range indicator i.e within RSI bounds
-            var1,var2 = self.out_of_range(value[0],value[1],value[2])
-      
-          # Generating signals
-          self.signals_dict[value[0]] = [0] * len(self.dataframe) #no signal
-          self.signals_dict[value[0]] = np.where(var1, 1, self.signals_dict[value[0]]) #buy signal
-          self.signals_dict[value[0]] = np.where(var2, -1, self.signals_dict[value[0]]) #sell signal
-      
-        combined_signals.append(self.signals_dict[value[0]]) #add signals to combined signals
+      for strategy_type, params in strat.indicator_strategies_dict.items():
+        if strategy_type == 'cross': #if cross indicator i.e. EMA cross
+          indicator_name, comparison_name = params
+          signal_key = f"{strategy_type}:{indicator_name}:{comparison_name}"
+          if signal_key not in self.signals_dict:
+            var1, var2 = self.cross_over(indicator_name, comparison_name)
+            self.signals_dict[signal_key] = [0] * len(self.dataframe) #no signal
+            self.signals_dict[signal_key] = np.where(var1, 1, self.signals_dict[signal_key]) #buy signal
+            self.signals_dict[signal_key] = np.where(var2, -1, self.signals_dict[signal_key]) #sell signal
+          combined_signals.append(self.signals_dict[signal_key])
+        elif strategy_type == 'range': #if range indicator i.e within RSI bounds
+          indicator_name, lower_limit, upper_limit = params
+          signal_key = f"{strategy_type}:{indicator_name}:{lower_limit}:{upper_limit}"
+          if signal_key not in self.signals_dict:
+            var1, var2 = self.out_of_range(indicator_name, lower_limit, upper_limit)
+            self.signals_dict[signal_key] = [0] * len(self.dataframe) #no signal
+            self.signals_dict[signal_key] = np.where(var1, 1, self.signals_dict[signal_key]) #buy signal
+            self.signals_dict[signal_key] = np.where(var2, -1, self.signals_dict[signal_key]) #sell signal
+          combined_signals.append(self.signals_dict[signal_key])
           
       if len(combined_signals) != 1: 
           combined_signals_trans = zip(*combined_signals)
@@ -178,9 +168,26 @@ class StockAnalyser():
     def calculate_profit(self,strat):
         max_positions = strat.max_positions
         stop_loss = strat.stop_loss
+        if 'profit' not in strat.dataframe:
+            strat.dataframe['profit'] = 0
+            strat.dataframe['profit_l'] = 0
+            strat.dataframe['profit_s'] = 0
+            strat.dataframe['duration'] = 0
+
         temp_list = list(strat.dataframe['signal'])
-        index = min(temp_list.index(1),temp_list.index(-1))
-        previous_date,previous_position = strat.dataframe.iloc[index]  #prev figures
+        if 1 not in temp_list and -1 not in temp_list:
+            return
+
+        first_buy = temp_list.index(1) if 1 in temp_list else None
+        first_sell = temp_list.index(-1) if -1 in temp_list else None
+        if first_buy is None:
+            index = first_sell
+        elif first_sell is None:
+            index = first_buy
+        else:
+            index = min(first_buy, first_sell)
+        previous_date = strat.dataframe.loc[index, 'Date']
+        previous_position = strat.dataframe.loc[index, 'signal']
         positions = 0
         stop_losses = []
         opened_positions =  pd.DataFrame({'Date' : [previous_date],'signal': [previous_position]})
@@ -196,14 +203,22 @@ class StockAnalyser():
             condition = opened_positions['profit'] < stop_loss * current_price
             stop_losses = opened_positions[condition]
             if len(stop_losses) > 0 :
-                strat.dataframe.iloc[index][profit_type] = strat.dataframe.iloc[index]['profit'] = sum(stop_losses['profit'])
-                opened_positions.drop(condition.index)
+                strat.dataframe.loc[index, profit_type] = sum(stop_losses['profit'])
+                strat.dataframe.loc[index, 'profit'] = sum(stop_losses['profit'])
+                opened_positions = opened_positions[~condition].copy()
             return sum(stop_losses['duration'])
             
+        def add_position(opened_positions, current_date, current_position):
+            new_position = pd.DataFrame(
+                {'Date': [current_date], 'signal': [current_position], 'duration': [0], 'profit': [0]}
+            )
+            return pd.concat([opened_positions, new_position], ignore_index=True)
+
         def close_all_positions(opened_positions,profit_type):
 
             #close all positions
-            strat.dataframe.iloc[index]['profit_s'] = strat.dataframe.iloc[index]['profit'] = sum(opened_positions['profit'])
+            strat.dataframe.loc[index, 'profit_s'] = sum(opened_positions['profit'])
+            strat.dataframe.loc[index, 'profit'] = sum(opened_positions['profit'])
     
             #new positions
             opened_positions =  pd.DataFrame({'Date' : [current_date],'signal': [current_position]})
@@ -211,7 +226,8 @@ class StockAnalyser():
             return sum(opened_positions['duration']),opened_positions
         
         for index,row in strat.dataframe[index+1:].iterrows():
-            current_date,current_position = row  #prev figures
+            current_date = row['Date']
+            current_position = row['signal']
             current_daychange = self.dataframe['Day Change'].iloc[index]
             current_price = self.dataframe['Adj Close'].iloc[index]
             opened_positions['duration'] += (current_date - previous_date).days
@@ -226,7 +242,7 @@ class StockAnalyser():
                         
                     #new positions
                     if len(opened_positions) < max_positions:
-                        opened_positions.append(current_date)
+                        opened_positions = add_position(opened_positions, current_date, current_position)
                         
                 else:
                     
@@ -249,7 +265,7 @@ class StockAnalyser():
                         
                     #new positions
                     if len(opened_positions) < max_positions:
-                        opened_positions.append(current_date)
+                        opened_positions = add_position(opened_positions, current_date, current_position)
                         
                 else:
                     #calculate profit + duration
@@ -282,7 +298,7 @@ class StockAnalyser():
       - graph: whether or not to produce a profit graph
       
       """
-      strat.dataframe = self.dataframe[['Date']].copy() # add stock price to strategy dataframe
+      strat.dataframe = self.dataframe[['Date', 'Adj Close']].copy()
       self.signal_generator(strat)
       self.calculate_profit(strat)
       strat.update_profit_stats()

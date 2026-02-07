@@ -153,11 +153,12 @@ if st.session_state.stock_analyser_obj:
     if analysis_data:
         st.subheader("Price and Strategy Performance Chart")
         # Call the graph_manager to display the graph
-        display_analysis_graph(
+        fig = display_analysis_graph(
             analysis_data['dataframe'],
             analysis_data['strategies_data'], # This would be a structured dict/list of strategy results
             interactive=True # Assuming spanner.py provides interactivity
         )
+        st.pyplot(fig)
 
         st.subheader("Strategy Performance Metrics")
         # Display simplified profit statistics

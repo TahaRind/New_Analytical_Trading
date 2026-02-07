@@ -73,8 +73,9 @@ def run_strategies(stock_analyser_obj: StockAnalyser, indicator_params: dict, st
         else:
             print(f"Warning: Could not create strategy for {strat_name}. Skipping.") # Replaced st.warning
             continue
-        
-        stock_analyser_obj
+        stock_analyser_obj.run_strat(strat)
+
+    return stock_analyser_obj
 
 def get_analysis_data(stock_analyser_obj: StockAnalyser):
     """
