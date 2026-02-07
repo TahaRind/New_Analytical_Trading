@@ -45,7 +45,6 @@ with col1:
                 st.error(f"Analysis '{analysis_name}' not found. Please create it first.")
             except Exception as e:
                 st.error(f"Error loading analysis: {e}")
-                print(e)
         else:
             st.warning("Please enter an analysis name to load.")
 

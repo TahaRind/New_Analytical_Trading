@@ -4,6 +4,7 @@ def load_analysis(stock_filename):
     print(f"File {stock_filename} exists. Loading object...")
     with open(stock_filename, 'rb') as f:
         stock = pickle.load(f)
+        print(" Loaded object...")
     return(stock)
 
 
