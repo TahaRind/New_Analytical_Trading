@@ -62,19 +62,20 @@ def run_strategies(stock_analyser_obj: StockAnalyser, indicator_params: dict, st
             indicator_strategies = {}
             for part in parts:
                 if 'EMA' in part:
-                    indicator_strategies['cross'] = [part, 'Adj Close']
+                    indicator_strategies['cross'] = [part, 'Close']
                 elif 'RSI' in part:
                     indicator_strategies['range'] = [part, 30, 70] # Example range
             strat = Strategiser(strat_name, indicator_strategies)
         elif 'EMA' in strat_name:
-            strat = Strategiser(strat_name, {'cross': [strat_name, 'Adj Close']})
+            strat = Strategiser(strat_name, {'cross': [strat_name, 'Close']})
         elif 'RSI' in strat_name:
             strat = Strategiser(strat_name, {'range': [strat_name, 30, 70]}) # Example range
         else:
             print(f"Warning: Could not create strategy for {strat_name}. Skipping.") # Replaced st.warning
             continue
-        
-        stock_analyser_obj
+        stock_analyser_obj.run_strat(strat)
+
+    return stock_analyser_obj
 
 def get_analysis_data(stock_analyser_obj: StockAnalyser):
     """
