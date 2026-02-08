@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 
 def display_analysis_graph(dataframe, strategies_data, interactive=False):
     fig, ax = plt.subplots(figsize=(12, 6))
-    ax.plot(dataframe['Date'], dataframe['Adj Close'], label='Adj Close', color='purple')
+    ax.plot(dataframe['Date'], dataframe['Close'], label='Close', color='purple')
     ax.set_xlabel('Date')
-    ax.set_ylabel('Adj Close')
+    ax.set_ylabel('Close')
 
     if strategies_data:
         ax2 = ax.twinx()

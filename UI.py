@@ -42,9 +42,9 @@ with col1:
                 st.session_state.stock_analyser_obj = load_analysis(f"{analysis_name}.pkl")
                 st.success(f"Successfully loaded analysis: {analysis_name}")
             except FileNotFoundError:
-                st.error(f"Analysis '{analysis_name}' not found. Please create it first.")
+                st.exception(FileNotFoundError(f"Analysis '{analysis_name}' not found. Please create it first."))
             except Exception as e:
-                st.error(f"Error loading analysis: {e}")
+                st.exception(e)
                 print(e)
         else:
             st.warning("Please enter an analysis name to load.")
@@ -84,9 +84,9 @@ with col2:
                             st.success(f"New analysis '{analysis_name}' created successfully for {primary_ticker}.")
                             st.session_state.show_create_form = False
                         except ValueError as e:
-                            st.error(str(e))
+                            st.exception(e)
                         except Exception as e:
-                            st.error(f"Error creating analysis: {e}")
+                            st.exception(e)
                 else:
                     st.warning("Please enter at least one stock ticker to create a new analysis.")
         else:
@@ -162,7 +162,7 @@ if st.session_state.stock_analyser_obj:
                 )
                 st.success("Analysis and strategies updated successfully!")
             except Exception as e:
-                st.error(f"Error running analysis: {e}")
+                st.exception(e)
         else:
             st.warning("No active analysis to run. Please load or create one.")
 
@@ -205,4 +205,4 @@ if st.session_state.stock_analyser_obj:
             save_analysis(st.session_state.stock_analyser_obj, f"{st.session_state.stock_analyser_obj.name}.pkl")
             st.success(f"Analysis '{st.session_state.stock_analyser_obj.name}' saved successfully!")
         except Exception as e:
-            st.error(f"Error saving analysis: {e}")
+            st.exception(e)

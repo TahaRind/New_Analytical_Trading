@@ -22,19 +22,19 @@ for key,values in indicators.items():
         name = key.upper() + '_' + val
 
         if key =='ema':
-            strat = Strategiser(name,{'cross':[name,'Adj Close']})
+            strat = Strategiser(name,{'cross':[name,'Close']})
         elif key =='rsi':
             strat = Strategiser(name,{'range':[name,30,70]})
             
         ual.run_strat(strat)
 
-strat = Strategiser('EMA5-RSI9',{'cross':['EMA_5','Adj Close'],'range':['RSI_9',30,70]})
+strat = Strategiser('EMA5-RSI9',{'cross':['EMA_5','Close'],'range':['RSI_9',30,70]})
 ual.run_strat(strat)
 
-strat = Strategiser('EMA5-RSI9_2',{'cross':['EMA_5','Adj Close'],'range':['RSI_9',30,70]},positions = 2)
+strat = Strategiser('EMA5-RSI9_2',{'cross':['EMA_5','Close'],'range':['RSI_9',30,70]},positions = 2)
 ual.run_strat(strat)
 #%%
-strat = Strategiser('EMA5-RSI9_3',{'cross':['EMA_5','Adj Close'],'range':['RSI_9',30,70]},positions = 3)
+strat = Strategiser('EMA5-RSI9_3',{'cross':['EMA_5','Close'],'range':['RSI_9',30,70]},positions = 3)
 ual.run_strat(strat)
 
 #%%graphs
