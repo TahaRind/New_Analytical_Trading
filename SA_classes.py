@@ -45,10 +45,13 @@ class StockAnalyser():
                 - indicators: list of indicators to add
                 - outliers: whether or not outliers should be produced
       """
-      self.name = analysis_input['name']  
+      self.name = analysis_input['name']
+      if isinstance(self.name, (list, tuple)):
+          self.name = self.name[0] if self.name else ""
+      self.name = str(self.name)
 
-          dataframe = yf.download(self.name, period='max', progress=False, threads=False)
-      self.dataframe['Day Change'] = self.dataframe['Adj Close'] - self.dataframe['Adj Close'].shift(1)    
+          dataframe = yf.Ticker(self.name).history(period='max')
+              dataframe = yf.download(self.name, period='max', progress=False, threads=False)
       self.initial_dataframe = self.dataframe.copy()
       self.outliers_dict = {}
       self.signals_dict = {}
