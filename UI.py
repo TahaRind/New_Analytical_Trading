@@ -66,13 +66,25 @@ with col2:
 
             if submitted:
                 if stock_names:
-                    try:
-                        # Call the new create_analysis from SA_orchestrator
-                        st.session_state.stock_analyser_obj = create_analysis(stock_names.upper(), initial_indicators, False)
-                        st.success(f"New analysis '{analysis_name}' created successfully for {stock_names.upper()}.")
-                        st.session_state.show_create_form = False
-                    except Exception as e:
-                        st.error(f"Error creating analysis: {e}")
+                    raw_tickers = [
+                        ticker.strip().strip("'\"")
+                        for ticker in stock_names.split(',')
+                        if ticker.strip()
+                    ]
+                    if not raw_tickers:
+                        st.warning("Please enter at least one stock ticker to create a new analysis.")
+                        raw_tickers = []
+                    if len(raw_tickers) > 1:
+                        st.info("Multiple tickers detected. Creating analysis for the first ticker only.")
+                    if raw_tickers:
+                        primary_ticker = raw_tickers[0].upper()
+                        try:
+                            # Call the new create_analysis from SA_orchestrator
+                            st.session_state.stock_analyser_obj = create_analysis(primary_ticker, initial_indicators, False)
+                            st.success(f"New analysis '{analysis_name}' created successfully for {primary_ticker}.")
+                            st.session_state.show_create_form = False
+                        except Exception as e:
+                            st.error(f"Error creating analysis: {e}")
                 else:
                     st.warning("Please enter at least one stock ticker to create a new analysis.")
         else:
