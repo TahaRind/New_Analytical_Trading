@@ -58,7 +58,10 @@ class StockAnalyser():
               self.dataframe['Adj Close'] = self.dataframe['Close']
           else:
               raise ValueError(f"Ticker '{self.name}' data is missing an Adj Close column.")
-      self.dataframe['Day Change'] = self.dataframe['Adj Close'] - self.dataframe['Adj Close'].shift(1)    
+      self.dataframe['Day Change'] = (
+          self.dataframe['Adj Close'].astype(float)
+          - self.dataframe['Adj Close'].shift(1).astype(float)
+      )
       self.initial_dataframe = self.dataframe.copy()
       self.outliers_dict = {}
       self.signals_dict = {}
@@ -193,9 +196,9 @@ class StockAnalyser():
         max_positions = strat.max_positions
         stop_loss = strat.stop_loss
         if 'profit' not in strat.dataframe:
-            strat.dataframe['profit'] = 0
-            strat.dataframe['profit_l'] = 0
-            strat.dataframe['profit_s'] = 0
+            strat.dataframe['profit'] = 0.0
+            strat.dataframe['profit_l'] = 0.0
+            strat.dataframe['profit_s'] = 0.0
             strat.dataframe['duration'] = 0
 
         temp_list = list(strat.dataframe['signal'])
