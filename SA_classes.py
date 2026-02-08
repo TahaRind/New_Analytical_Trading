@@ -50,6 +50,11 @@ class StockAnalyser():
           self.name = self.name[0] if self.name else ""
       self.name = str(self.name)
 
+      if 'Adj Close' not in self.dataframe.columns:
+          if 'Close' in self.dataframe.columns:
+              self.dataframe['Adj Close'] = self.dataframe['Close']
+          else:
+              raise ValueError(f"Ticker '{self.name}' data is missing an Adj Close column.")
           dataframe = yf.Ticker(self.name).history(period='max')
               dataframe = yf.download(self.name, period='max', progress=False, threads=False)
       self.initial_dataframe = self.dataframe.copy()
