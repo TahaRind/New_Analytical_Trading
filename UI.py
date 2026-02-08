@@ -51,23 +51,46 @@ with col1:
 
 with col2:
     if st.button("Create New Analysis"):
+        st.session_state.show_create_form = True
+
+    if st.session_state.get("show_create_form"):
         if analysis_name:
             # Placeholder for initial indicators, will be configured later
             initial_indicators = {'ema': ['5', '10'], 'rsi': ['14']}
-            stock_names = st.text_input("Enter Stock Tickers (comma-separated, e.g., 'UAL,AAPL,MSFT')", key="stock_name_input_create")
-            
-            if st.button("Add stock"):
+            with st.form("create_analysis_form"):
+                stock_names = st.text_input(
+                    "Enter Stock Tickers (comma-separated, e.g., 'UAL,AAPL,MSFT')",
+                    key="stock_name_input_create"
+                )
+                submitted = st.form_submit_button("Add stock")
+
+            if submitted:
                 if stock_names:
-                    try:
-                        # Call the new create_analysis from SA_orchestrator
-                        st.session_state.stock_analyser_obj = create_analysis(stock_names.upper(), initial_indicators, False)
-                        st.success(f"New analysis '{analysis_name}' created successfully for {stock_names.upper()}.")
-                    except Exception as e:
-                        st.error(f"Error creating analysis: {e}")
+                    raw_tickers = [
+                        ticker.strip().strip("'\"")
+                        for ticker in stock_names.split(',')
+                        if ticker.strip()
+                    ]
+                    if not raw_tickers:
+                        st.warning("Please enter at least one stock ticker to create a new analysis.")
+                        raw_tickers = []
+                    if len(raw_tickers) > 1:
+                        st.info("Multiple tickers detected. Creating analysis for the first ticker only.")
+                    if raw_tickers:
+                        primary_ticker = raw_tickers[0].upper()
+                        try:
+                            # Call the new create_analysis from SA_orchestrator
+                            st.session_state.stock_analyser_obj = create_analysis(primary_ticker, initial_indicators, False)
+                            st.success(f"New analysis '{analysis_name}' created successfully for {primary_ticker}.")
+                            st.session_state.show_create_form = False
+                        except ValueError as e:
+                            st.error(str(e))
+                        except Exception as e:
+                            st.error(f"Error creating analysis: {e}")
                 else:
                     st.warning("Please enter at least one stock ticker to create a new analysis.")
-            else:
-                st.warning("Please enter a name for the new analysis.")
+        else:
+            st.warning("Please enter a name for the new analysis.")
 
             
 
@@ -153,11 +176,12 @@ if st.session_state.stock_analyser_obj:
     if analysis_data:
         st.subheader("Price and Strategy Performance Chart")
         # Call the graph_manager to display the graph
-        display_analysis_graph(
+        fig = display_analysis_graph(
             analysis_data['dataframe'],
             analysis_data['strategies_data'], # This would be a structured dict/list of strategy results
             interactive=True # Assuming spanner.py provides interactivity
         )
+        st.pyplot(fig)
 
         st.subheader("Strategy Performance Metrics")
         # Display simplified profit statistics
