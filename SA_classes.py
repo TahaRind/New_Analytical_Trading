@@ -50,18 +50,18 @@ class StockAnalyser():
           self.name = self.name[0] if self.name else ""
       self.name = str(self.name)
 
-      if 'Adj Close' not in self.dataframe.columns:
-          if 'Close' in self.dataframe.columns:
-              self.dataframe['Adj Close'] = self.dataframe['Close']
-          else:
-              raise ValueError(f"Ticker '{self.name}' data is missing an Adj Close column.")
-          dataframe = yf.Ticker(self.name).history(period='max')
-              dataframe = yf.download(self.name, period='max', progress=False, threads=False)
+
+          
+      self.dataframe = yf.Ticker(self.name).history(period='max')
+      self.dataframe = yf.download(self.name, period='max', progress=False, threads=False)
+        
+
       self.initial_dataframe = self.dataframe.copy()
       self.outliers_dict = {}
       self.signals_dict = {}
       self.strategies_dict = {}
       self.add_ind(analysis_input['indicators'])
+
       self.outliers(analysis_input['outliers'])
     
     def add_ind(self,indicators):
@@ -78,17 +78,21 @@ class StockAnalyser():
       for name,instances in indicators.items():
       
         for instance in instances:
+          print(self.dataframe)
           args = [int(i) for i in instance.split()]
       
-          indicator_result = getattr(ta,name)(self.dataframe['Adj Close'],*args)
+          indicator_result = getattr(ta,name)(self.dataframe['Close'],*args)
+
           self.dataframe = pd.concat([self.dataframe, indicator_result], axis=1)
-      
+          print(self.dataframe)
+
+
       self.dataframe.dropna(inplace=True)
       self.dataframe.reset_index(inplace = True)
     
     def outliers(self, detect):
       """
-      Detect outliers in the 'Adj Close' column of the dataset.
+      Detect outliers in the 'Close' column of the dataset.
       
       Parameters:
       - detect: Boolean indicating whether or not to detect outliers.
@@ -102,22 +106,23 @@ class StockAnalyser():
       # Detect outliers using percentiles
       lower_percentile = 5
       upper_percentile = 95
-      lower_threshold = np.percentile(self.dataframe['Adj Close'], lower_percentile)
-      upper_threshold = np.percentile(self.dataframe['Adj Close'], upper_percentile)
-      outliers_dict["outliers_percentile"] = self.dataframe['Adj Close'].apply(lambda x: x < lower_threshold or x > upper_threshold)
+      
+      lower_threshold = np.percentile(self.dataframe['Close'], lower_percentile)
+      upper_threshold = np.percentile(self.dataframe['Close'], upper_percentile)
+      outliers_dict["outliers_percentile"] = self.dataframe['Close'].apply(lambda x: x < lower_threshold or x > upper_threshold)
       
       # Detect outliers using IQR
-      quartile_1, quartile_3 = np.percentile(self.dataframe['Adj Close'], [25, 75])
+      quartile_1, quartile_3 = np.percentile(self.dataframe['Close'], [25, 75])
       iqr = quartile_3 - quartile_1
       lower_bound = quartile_1 - (1.5 * iqr)
       upper_bound = quartile_3 + (1.5 * iqr)
-      outliers_dict["outliers_iqr"] = self.dataframe['Adj Close'].apply(lambda x: x < lower_bound or x > upper_bound)
+      outliers_dict["outliers_iqr"] = self.dataframe['Close'].apply(lambda x: x < lower_bound or x > upper_bound)
       
       # Detect outliers using z-score
       threshold = 3
-      mean = np.mean(self.dataframe['Adj Close'])
-      std_dev = np.std(self.dataframe['Adj Close'])
-      z_scores = (self.dataframe['Adj Close'] - mean) / std_dev
+      mean = np.mean(self.dataframe['Close'])
+      std_dev = np.std(self.dataframe['Close'])
+      z_scores = (self.dataframe['Close'] - mean) / std_dev
       outliers_dict["outliers_zscore"] = z_scores.abs() > threshold
       
       self.outliers_dict = outliers_dict
@@ -237,7 +242,7 @@ class StockAnalyser():
             current_date = row['Date']
             current_position = row['signal']
             current_daychange = self.dataframe['Day Change'].iloc[index]
-            current_price = self.dataframe['Adj Close'].iloc[index]
+            current_price = self.dataframe['Close'].iloc[index]
             opened_positions['duration'] += (current_date - previous_date).days
             
             if current_position == 1:
@@ -306,7 +311,7 @@ class StockAnalyser():
       - graph: whether or not to produce a profit graph
       
       """
-      strat.dataframe = self.dataframe[['Date', 'Adj Close']].copy()
+      strat.dataframe = self.dataframe[['Date', 'Close']].copy()
       self.signal_generator(strat)
       self.calculate_profit(strat)
       strat.update_profit_stats()
@@ -347,7 +352,7 @@ class StockAnalyser():
       dataframe_filtered =  self.dataframe[mask]
       
       
-      ax1.plot(dataframe_filtered['Date'],dataframe_filtered['Adj Close'], label = 'Adj Close',color='purple',marker = 'o', markersize=ms)
+      ax1.plot(dataframe_filtered['Date'],dataframe_filtered['Close'], label = 'Close',color='purple',marker = 'o', markersize=ms)
       
       #graph_sims = ['o','+','x','*','a','b','c','d','e','f','g','h','i','z']
       graph_sims = [".",",","o","v","^","<",">","1","2","3","4","8","s","p","P","*","h","H","+","x","X","D","d","|","_",0,1,2,3,4,5,6,7,8,9,10,11]
@@ -363,8 +368,8 @@ class StockAnalyser():
           buy_signals = df['signal'] == 1
           sell_signals = df['signal'] == -1
       
-          ax1.scatter(dataframe_filtered['Date'][buy_signals], dataframe_filtered['Adj Close'][buy_signals], label='Buy Signal' + ' ' + graph.name, color='green',marker = graph_sims[count], s=20)
-          ax1.scatter(dataframe_filtered['Date'][sell_signals], dataframe_filtered['Adj Close'][sell_signals], label='Sell Signal' + ' ' + graph.name, color='red',marker = graph_sims[count], s=20)
+          ax1.scatter(dataframe_filtered['Date'][buy_signals], dataframe_filtered['Close'][buy_signals], label='Buy Signal' + ' ' + graph.name, color='green',marker = graph_sims[count], s=20)
+          ax1.scatter(dataframe_filtered['Date'][sell_signals], dataframe_filtered['Close'][sell_signals], label='Sell Signal' + ' ' + graph.name, color='red',marker = graph_sims[count], s=20)
       
         elif graph.name == 'rsi':
           ax3 = fig.add_subplot(gs[1], sharex=ax1)
