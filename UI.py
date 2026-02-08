@@ -83,6 +83,8 @@ with col2:
                             st.session_state.stock_analyser_obj = create_analysis(primary_ticker, initial_indicators, False)
                             st.success(f"New analysis '{analysis_name}' created successfully for {primary_ticker}.")
                             st.session_state.show_create_form = False
+                        except ValueError as e:
+                            st.error(str(e))
                         except Exception as e:
                             st.error(f"Error creating analysis: {e}")
                 else:

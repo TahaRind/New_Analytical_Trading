@@ -47,7 +47,7 @@ class StockAnalyser():
       """
       self.name = analysis_input['name']  
 
-      self.dataframe = yf.download(self.name, period='max')
+          dataframe = yf.download(self.name, period='max', progress=False, threads=False)
       self.dataframe['Day Change'] = self.dataframe['Adj Close'] - self.dataframe['Adj Close'].shift(1)    
       self.initial_dataframe = self.dataframe.copy()
       self.outliers_dict = {}
