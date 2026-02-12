@@ -27,7 +27,10 @@ class Strategiser():
       cols = ['duration','profit','profit_l','profit_s']
       df = self.dataframe[cols].describe()
       
-      normalised_profit = [None] +[self.profit_frame[key][1]/self.profit_frame[key][0] for key in self.profit_frame] 
+      normalised_profit = [None]
+      for key in self.profit_frame:
+          total_positions, total_profit = self.profit_frame[key]
+          normalised_profit.append(total_profit / total_positions if total_positions else 0)
       
       df.loc['total_normalised'] = normalised_profit
       
