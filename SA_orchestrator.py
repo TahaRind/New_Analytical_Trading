@@ -70,6 +70,16 @@ def run_strategies(stock_analyser_obj: StockAnalyser, indicator_params: dict, st
             strat = Strategiser(strat_name, {'cross': [strat_name, 'Close']})
         elif 'RSI' in strat_name:
             strat = Strategiser(strat_name, {'range': [strat_name, 30, 70]}) # Example range
+        elif 'MACD' in strat_name:
+            parts = strat_name.split('_')
+            if len(parts) == 4:
+                _, fast, slow, signal = parts
+                macd_line = f"MACD_{fast}_{slow}_{signal}"
+                signal_line = f"MACDs_{fast}_{slow}_{signal}"
+                strat = Strategiser(strat_name, {'cross': [macd_line, signal_line]})
+            else:
+                print(f"Warning: Invalid MACD strategy format for {strat_name}. Skipping.")
+                continue
         else:
             print(f"Warning: Could not create strategy for {strat_name}. Skipping.") # Replaced st.warning
             continue

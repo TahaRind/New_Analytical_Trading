@@ -29,6 +29,8 @@ st.title("Interactive Stock Analysis Dashboard")
 # Initialize session state for the stock_analyser object if it doesn't exist
 if 'stock_analyser_obj' not in st.session_state:
     st.session_state.stock_analyser_obj = None
+if 'active_analysis_name' not in st.session_state:
+    st.session_state.active_analysis_name = None
 
 analysis_name = st.text_input("Enter Stock Analysis Name (e.g., 'MyUALAnalysis')", key="analysis_name_input")
 
@@ -40,6 +42,7 @@ with col1:
             try:
                 # Call the new load_analysis from SA_manager
                 st.session_state.stock_analyser_obj = load_analysis(f"{analysis_name}.pkl")
+                st.session_state.active_analysis_name = analysis_name
                 st.success(f"Successfully loaded analysis: {analysis_name}")
             except FileNotFoundError:
                 st.exception(FileNotFoundError(f"Analysis '{analysis_name}' not found. Please create it first."))
@@ -81,6 +84,7 @@ with col2:
                         try:
                             # Call the new create_analysis from SA_orchestrator
                             st.session_state.stock_analyser_obj = create_analysis(primary_ticker, initial_indicators, False)
+                            st.session_state.active_analysis_name = analysis_name
                             st.success(f"New analysis '{analysis_name}' created successfully for {primary_ticker}.")
                             st.session_state.show_create_form = False
                         except ValueError as e:
@@ -128,7 +132,13 @@ if st.session_state.stock_analyser_obj:
         elif indicator == "RSI":
             rsi_periods_str = st.text_input(f"Enter RSI periods for {st.session_state.stock_analyser_obj.name} (comma-separated, e.g., '14,21')", value="14,21", key=f"rsi_periods_{st.session_state.stock_analyser_obj.name}")
             indicator_params['rsi'] = [p.strip() for p in rsi_periods_str.split(',') if p.strip()]
-        # Add more logic for other indicators like MACD
+        elif indicator == "MACD":
+            macd_params_str = st.text_input(
+                "Enter MACD params as fast slow signal (comma-separated sets, e.g., '12 26 9,8 21 5')",
+                value="12 26 9",
+                key=f"macd_params_{st.session_state.stock_analyser_obj.name}"
+            )
+            indicator_params['macd'] = [p.strip() for p in macd_params_str.split(',') if p.strip()]
 
     # Strategy Configuration (simplified for now)
     st.subheader("Define Strategies")
@@ -138,6 +148,10 @@ if st.session_state.stock_analyser_obj:
     if "EMA" in selected_indicators and "RSI" in selected_indicators:
         if indicator_params.get('ema') and indicator_params.get('rsi'):
             strategies_to_run.append(f"EMA_{indicator_params['ema'][0]}-RSI_{indicator_params['rsi'][0]}")
+    elif "MACD" in selected_indicators and indicator_params.get('macd'):
+        for params in indicator_params['macd']:
+            fast, slow, signal = params.split()
+            strategies_to_run.append(f"MACD_{fast}_{slow}_{signal}")
     elif "EMA" in selected_indicators and indicator_params.get('ema'):
         for period in indicator_params['ema']:
             strategies_to_run.append(f"EMA_{period}")
@@ -202,7 +216,8 @@ if st.session_state.stock_analyser_obj:
     if st.button("Save Analysis"):
         try:
             # Call the new save_analysis from SA_manager
-            save_analysis(st.session_state.stock_analyser_obj, f"{st.session_state.stock_analyser_obj.name}.pkl")
-            st.success(f"Analysis '{st.session_state.stock_analyser_obj.name}' saved successfully!")
+            target_name = st.session_state.active_analysis_name or st.session_state.stock_analyser_obj.name
+            save_analysis(st.session_state.stock_analyser_obj, f"{target_name}.pkl")
+            st.success(f"Analysis '{target_name}' saved successfully!")
         except Exception as e:
             st.exception(e)

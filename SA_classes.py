@@ -321,6 +321,16 @@ class StockAnalyser():
                     s_duration += duration
         
             previous_date,previous_position = current_date,current_position
+
+        total_profit = float(strat.dataframe['profit'].sum())
+        long_profit = float(strat.dataframe['profit_l'].sum())
+        short_profit = float(strat.dataframe['profit_s'].sum())
+        total_positions = int((strat.dataframe['signal'] != 0).sum())
+        long_positions = int((strat.dataframe['signal'] == 1).sum())
+        short_positions = int((strat.dataframe['signal'] == -1).sum())
+        strat.profit_frame['both'] = [total_positions, total_profit]
+        strat.profit_frame['long'] = [long_positions, long_profit]
+        strat.profit_frame['short'] = [short_positions, short_profit]
     def run_strat(self,strat):
     
       """
