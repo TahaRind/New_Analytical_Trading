@@ -61,7 +61,7 @@ with create_column:
         if not analysis_name_input:
             st.warning("Please enter a name for the new analysis.")
         else:
-            default_indicators = {'ema': ['5', '10'], 'rsi': ['14']}
+            default_indicators = {'ema': ['5'], 'rsi': ['14']}
             with st.form("create_analysis_form"):
                 ticker_text = st.text_input(
                     "Enter Stock Tickers (comma-separated, e.g., 'UAL,AAPL,MSFT')",
@@ -115,14 +115,14 @@ if active_analysis:
         if indicator_name == "EMA":
             ema_period_text = st.text_input(
                 f"Enter EMA periods for {active_analysis.name} (comma-separated, e.g., '5,10,20')",
-                value="5,10,20",
+                value="5",
                 key=f"ema_periods_{active_analysis.name}",
             )
             indicator_params['ema'] = [value.strip() for value in ema_period_text.split(',') if value.strip()]
         elif indicator_name == "RSI":
             rsi_period_text = st.text_input(
                 f"Enter RSI periods for {active_analysis.name} (comma-separated, e.g., '14,21')",
-                value="14,21",
+                value="14",
                 key=f"rsi_periods_{active_analysis.name}",
             )
             indicator_params['rsi'] = [value.strip() for value in rsi_period_text.split(',') if value.strip()]
@@ -137,17 +137,30 @@ if active_analysis:
     strategy_names = []
     if "EMA" in indicator_choices and "RSI" in indicator_choices:
         if indicator_params.get('ema') and indicator_params.get('rsi'):
-            strategy_names.append(f"EMA_{indicator_params['ema'][0]}-RSI_{indicator_params['rsi'][0]}")
-    elif "MACD" in indicator_choices and indicator_params.get('macd'):
+            for ema_period in indicator_params['ema']:
+                for rsi_period in indicator_params['rsi']:
+                    strategy_names.append(f"EMA_{ema_period}-RSI_{rsi_period}")
+
+    if "MACD" in indicator_choices and indicator_params.get('macd'):
         for macd_set in indicator_params['macd']:
             try:
                 fast_period, slow_period, signal_period = macd_set.split()
                 strategy_names.append(f"MACD_{fast_period}_{slow_period}_{signal_period}")
             except ValueError:
                 st.warning(f"Invalid MACD parameter set: '{macd_set}'. Expected format: fast slow signal")
-    elif "EMA" in indicator_choices and indicator_params.get('ema'):
+
+    if (
+        "EMA" in indicator_choices
+        and "RSI" not in indicator_choices
+        and indicator_params.get('ema')
+    ):
         strategy_names.extend([f"EMA_{period}" for period in indicator_params['ema']])
-    elif "RSI" in indicator_choices and indicator_params.get('rsi'):
+
+    if (
+        "RSI" in indicator_choices
+        and "EMA" not in indicator_choices
+        and indicator_params.get('rsi')
+    ):
         strategy_names.extend([f"RSI_{period}" for period in indicator_params['rsi']])
 
     if strategy_names:
@@ -177,7 +190,10 @@ if st.session_state.active_analysis:
             analysis_view_data['strategies_data'],
             interactive=True,
         )
-        st.pyplot(figure)
+        if hasattr(figure, "to_plotly_json"):
+            st.plotly_chart(figure, use_container_width=True)
+        else:
+            st.pyplot(figure)
 
         st.subheader("Strategy Performance Metrics")
         if st.session_state.active_analysis.strategies_dict:
