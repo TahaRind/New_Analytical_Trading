@@ -25,12 +25,51 @@ st.set_page_config(
 
 st.title("Interactive Stock Analysis Dashboard")
 
+
+def _set_active_analysis(analysis_obj, analysis_name: str):
+    st.session_state.active_analysis = analysis_obj
+    st.session_state.active_analysis_name = analysis_name
+
 if 'active_analysis' not in st.session_state:
     st.session_state.active_analysis = None
 if 'active_analysis_name' not in st.session_state:
     st.session_state.active_analysis_name = None
 if 'show_create_form' not in st.session_state:
     st.session_state.show_create_form = False
+
+if hasattr(st, "fragment"):
+    _fragment = st.fragment
+else:
+    def _fragment(func):
+        return func
+
+
+@_fragment
+def render_analysis_visualisations(active_analysis_obj):
+    analysis_view_data = prepare_analysis_view_data(active_analysis_obj)
+
+    if analysis_view_data:
+        st.subheader("Price and Strategy Performance Chart")
+        figure = build_analysis_figure(
+            analysis_view_data['dataframe'],
+            analysis_view_data['strategies_data'],
+            interactive=True,
+        )
+        if hasattr(figure, "to_plotly_json"):
+            st.plotly_chart(figure, use_container_width=True)
+        else:
+            st.pyplot(figure)
+
+        st.subheader("Strategy Performance Metrics")
+        if active_analysis_obj.strategies_dict:
+            for strategy_name, strategy in active_analysis_obj.strategies_dict.items():
+                if getattr(strategy, 'stats_df', None) is not None:
+                    st.write(f"**{strategy_name} Performance:**")
+                    st.dataframe(strategy.stats_df)
+                else:
+                    st.info(f"No performance data available for strategy: {strategy_name}")
+        else:
+            st.info("Run analysis to see strategy performance metrics.")
 
 analysis_name_input = st.text_input(
     "Enter Stock Analysis Name (e.g., 'MyUALAnalysis')",
@@ -45,8 +84,8 @@ with load_column:
             st.warning("Please enter an analysis name to load.")
         else:
             try:
-                st.session_state.active_analysis = load_analysis_from_file(f"{analysis_name_input}.pkl")
-                st.session_state.active_analysis_name = analysis_name_input
+                loaded_analysis = load_analysis_from_file(f"{analysis_name_input}.pkl")
+                _set_active_analysis(loaded_analysis, analysis_name_input)
                 st.success(f"Successfully loaded analysis: {analysis_name_input}")
             except FileNotFoundError:
                 st.exception(FileNotFoundError(f"Analysis '{analysis_name_input}' not found. Please create it first."))
@@ -82,12 +121,12 @@ with create_column:
                         st.info("Multiple tickers detected. Creating analysis for the first ticker only.")
                     primary_ticker = cleaned_tickers[0].upper()
                     try:
-                        st.session_state.active_analysis = create_stock_analysis(
+                        created_analysis = create_stock_analysis(
                             primary_ticker,
                             default_indicators,
                             False,
                         )
-                        st.session_state.active_analysis_name = analysis_name_input
+                        _set_active_analysis(created_analysis, analysis_name_input)
                         st.session_state.show_create_form = False
                         st.success(f"New analysis '{analysis_name_input}' created successfully for {primary_ticker}.")
                     except Exception as error:
@@ -181,30 +220,7 @@ if active_analysis:
 
 if st.session_state.active_analysis:
     st.header("Analysis Results")
-    analysis_view_data = prepare_analysis_view_data(st.session_state.active_analysis)
-
-    if analysis_view_data:
-        st.subheader("Price and Strategy Performance Chart")
-        figure = build_analysis_figure(
-            analysis_view_data['dataframe'],
-            analysis_view_data['strategies_data'],
-            interactive=True,
-        )
-        if hasattr(figure, "to_plotly_json"):
-            st.plotly_chart(figure, use_container_width=True)
-        else:
-            st.pyplot(figure)
-
-        st.subheader("Strategy Performance Metrics")
-        if st.session_state.active_analysis.strategies_dict:
-            for strategy_name, strategy in st.session_state.active_analysis.strategies_dict.items():
-                if getattr(strategy, 'stats_df', None) is not None:
-                    st.write(f"**{strategy_name} Performance:**")
-                    st.dataframe(strategy.stats_df)
-                else:
-                    st.info(f"No performance data available for strategy: {strategy_name}")
-        else:
-            st.info("Run analysis to see strategy performance metrics.")
+    render_analysis_visualisations(st.session_state.active_analysis)
 
 if st.session_state.active_analysis:
     st.header("Save Current Analysis")

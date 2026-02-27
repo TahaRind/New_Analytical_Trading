@@ -6,6 +6,37 @@ import pandas as pd
 import yfinance as yf
 import pandas_ta as ta
 
+try:
+    import streamlit as st
+except Exception:  # Streamlit may be unavailable in non-UI contexts
+    st = None
+
+
+def _identity_cache_decorator(func):
+    return func
+
+
+if st is not None and hasattr(st, "cache_data"):
+    _cache_data = st.cache_data(show_spinner=False)
+else:
+    _cache_data = _identity_cache_decorator
+
+
+@_cache_data
+def _fetch_price_history_cached(ticker_symbol: str):
+    try:
+        dataframe = yf.Ticker(ticker_symbol).history(period='max')
+    except Exception:
+        dataframe = pd.DataFrame()
+
+    if dataframe.empty:
+        try:
+            dataframe = yf.download(ticker_symbol, period='max', progress=False, threads=False)
+        except Exception:
+            dataframe = pd.DataFrame()
+
+    return dataframe
+
 
 def masker(start,end,df):
     return (df >= start) & (df <= end)
@@ -73,18 +104,7 @@ class StockAnalyser():
       self.outliers(analysis_input['outliers'])
 
     def _fetch_data(self):
-      try:
-          dataframe = yf.Ticker(self.name).history(period='max')
-      except Exception:
-          dataframe = pd.DataFrame()
-
-      if dataframe.empty:
-          try:
-              dataframe = yf.download(self.name, period='max', progress=False, threads=False)
-          except Exception:
-              dataframe = pd.DataFrame()
-
-      return dataframe
+      return _fetch_price_history_cached(self.name)
     
     def add_ind(self,indicators):
       """
