@@ -1,6 +1,7 @@
-streamlit
+fastapi
+uvicorn
 numpy
-pandas
+pandas<2.3
 yfinance
 pandas_ta
 plotly
